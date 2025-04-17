@@ -2,14 +2,15 @@ import sys
 import time
 from src.models.grid import Grid
 from src.utils.patterns import Patterns
-from src.visualization.renderer import ConsoleRenderer
+from src.visualization.pygame_renderer import PygameRenderer
 
 
 def main():
     # Parse command line arguments or use defaults
     width = 30
     height = 20
-    fps = 10
+    cell_size = 20  # Size of each cell in pixels
+    fps = 5  # Frames per second
     generations = None  # None for infinite
 
     # Parse optional arguments
@@ -39,14 +40,11 @@ def main():
         print("Available patterns: glider, blinker, block, beacon, pulsar, glider_gun, random")
         return
 
-    # Create the renderer
-    renderer = ConsoleRenderer(grid, fps)
+    print(f"Starting Conway's Game of Life with pattern: {pattern_name}")
+    print("Press ESC or Q to quit")
 
-    print(f"Conway's Game of Life - Pattern: {pattern_name}")
-    print("Press Ctrl+C to stop the animation")
-    time.sleep(2)  # Give the user time to read the message
-
-    # Start the animation
+    # Create the renderer and start the animation
+    renderer = PygameRenderer(grid, cell_size, fps)
     renderer.start_animation(generations)
 
     print("Game of Life simulation ended.")

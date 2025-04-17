@@ -1,12 +1,13 @@
 import time
 import os
+import sys
 from typing import Optional, Callable
 from src.models.grid import Grid
 
 
 class ConsoleRenderer:
     """
-    Renders the Game of Life grid in the console.
+    Renders the Game of Life grid in the console with proper in-place animation.
     """
 
     def __init__(self, grid: Grid, fps: int = 5):
@@ -26,24 +27,41 @@ class ConsoleRenderer:
         self._alive_char = "■"
         self._dead_char = " "
 
-    def _clear_console(self) -> None:
-        """Clear the console screen."""
-        # This works on Windows, macOS, and Linux
-        os.system('cls' if os.name == 'nt' else 'clear')
+        # Get terminal size
+        self.terminal_width = 80  # Default fallback
+        self.terminal_height = 24  # Default fallback
+        try:
+            # Try to get actual terminal size
+            import shutil
+            self.terminal_width, self.terminal_height = shutil.get_terminal_size()
+        except:
+            pass  # Use defaults if we can't get terminal size
 
-    def render_frame(self) -> None:
-        """Render a single frame of the grid."""
-        self._clear_console()
+    def _reset_cursor(self):
+        """Reset cursor to the beginning of the console output."""
+        # ANSI escape code to move cursor to the beginning
+        print("\033[H", end="", flush=True)
 
-        # Print generation info
-        print(f"Generation: {self.grid.generation}")
-        print(f"Live cells: {sum(1 for _ in self.grid.get_live_cells())}")
+    def _clear_screen(self):
+        """Clear the entire screen."""
+        # ANSI escape code to clear the screen and move cursor to home position
+        print("\033[2J\033[H", end="", flush=True)
 
-        # Print grid border
+    def render_frame(self):
+        """Render a single frame of the grid to a string."""
+        # Create the output string
+        output = []
+
+        # Add header
+        output.append(f"Conway's Game of Life - Generation: {self.grid.generation}")
+        output.append(f"Live cells: {sum(1 for _ in self.grid.get_live_cells())}")
+        output.append(f"Press Ctrl+C to exit")
+
+        # Add top border
         border = "+" + "-" * (self.grid.width + 2) + "+"
-        print(border)
+        output.append(border)
 
-        # Print grid with border
+        # Add grid content with borders
         for y in range(self.grid.height):
             row = "| "
             for x in range(self.grid.width):
@@ -52,13 +70,16 @@ class ConsoleRenderer:
                 else:
                     row += self._dead_char
             row += " |"
-            print(row)
+            output.append(row)
 
-        # Print bottom border
-        print(border)
+        # Add bottom border
+        output.append(border)
+
+        # Join all lines with newlines
+        return "\n".join(output)
 
     def start_animation(self, generations: Optional[int] = None,
-                        update_callback: Optional[Callable] = None) -> None:
+                        update_callback: Optional[Callable] = None):
         """
         Start animating the Game of Life.
 
@@ -68,17 +89,27 @@ class ConsoleRenderer:
             update_callback (Optional[Callable]): Function to call before each frame
                                                  to update the grid
         """
-        self.running = True
-        gen_count = 0
-
         try:
+            # Clear screen once at the beginning
+            if os.name == 'nt':
+                os.system('cls')
+            else:
+                os.system('clear')
+
+            self.running = True
+            gen_count = 0
+
             while self.running and (generations is None or gen_count < generations):
                 # Call the update callback if provided
                 if update_callback is not None:
                     update_callback(self.grid)
 
-                # Render the current state
-                self.render_frame()
+                # Render the current frame
+                frame = self.render_frame()
+
+                # Reset cursor to top of console and print the frame
+                self._reset_cursor()
+                print(frame, end="", flush=True)
 
                 # Advance to the next generation
                 self.grid.next_generation()
@@ -90,8 +121,8 @@ class ConsoleRenderer:
         except KeyboardInterrupt:
             # Allow the user to stop the animation with Ctrl+C
             self.running = False
-            print("\nAnimation stopped by user.")
+            print("\n\nAnimation stopped by user.")
 
-    def stop_animation(self) -> None:
+    def stop_animation(self):
         """Stop the animation."""
         self.running = False
